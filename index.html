@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>aNon - Decentralized Event Registration Management System</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="./css/anon.css">
+    <!-- Font Awesome -->
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css">
+	<!-- Bootstrap core CSS -->
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+	<!-- Material Design Bootstrap -->
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.10.1/css/mdb.min.css" rel="stylesheet">
+	<!-- JQuery -->
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+	<!-- Bootstrap tooltips -->
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"></script>
+	<!-- Bootstrap core JavaScript -->
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
+	<!-- MDB core JavaScript -->
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.10.1/js/mdb.min.js"></script>
+    <script src="./js/web3.js"></script>
+</head>
+<body>
+<!--Navbar -->
+<nav class="mb-1 navbar navbar-expand-lg navbar-dark default-color">
+  <a class="navbar-brand" href="#">aNon - Decentralized Event Registration Management System</a>
+  <div class="collapse navbar-collapse" id="navbarSupportedContent-333">
+  </div>
+</nav>
+<!--/.Navbar -->
+    <div class="container">
+        <h1 id="heading">Register and Verify Participation of Events</h1>
+        <form id="setEventData">
+		<p>Add new event</p>
+		  <div class="form-row">
+          <!-- Grid column -->
+           <div class="col-7">
+         <!-- Material input -->
+           <div class="md-form">
+            <label for="setEventName">Event name:</label>
+            <input id="setEventName" type="text" name="eventName">
+            <button type="submit" value="Submit" class="btn btn-default">Submit</button>
+			
+			</div>
+			</div>
+			</div>
+		</form>
+		
+		<div class="card card-cascade wider reverse">
+        <div class="card-body card-body-cascade text-center">
+		<h1 class="card-title"><a>EVENTS</a></h1>
+        <div id="events-container">
+        </div>
+		</div>
+		</div>
+		</div>
+	</div>
+
+<script>
+    let contractABI = [
+	{
+		"inputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "bool",
+				"name": "status",
+				"type": "bool"
+			}
+		],
+		"name": "IsRegistered",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "message",
+				"type": "string"
+			}
+		],
+		"name": "registrationStatus",
+		"type": "event"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "EventsList",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_id",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "_phone",
+				"type": "string"
+			}
+		],
+		"name": "checkMember",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_id",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "_phone",
+				"type": "string"
+			}
+		],
+		"name": "eventRegistration",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "getInfoAboutEvents",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_eventDescription",
+				"type": "string"
+			}
+		],
+		"name": "setEvent",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	}
+];
+
+
+    let $setEventData = document.getElementById('setEventData');
+    let $eventsContainer = document.getElementById('events-container');
+
+    window.addEventListener('load', async () => {
+
+        if (window.ethereum) {
+            window.web3 = new Web3(ethereum);
+            try {
+                await ethereum.enable();
+                let contractAddress = '0x91a4e539bbc058cf64bd59a2da85d4d0fb9ce364';
+                let accounts= await web3.eth.getAccounts();
+                let option={from: accounts[0] };
+                let eventReg = new web3.eth.Contract(contractABI, contractAddress);
+                const getInfoAboutEvents = () => {
+                    eventReg.methods.getInfoAboutEvents().call()
+                        .then(result => {
+                            let resultObject = JSON.parse(result);
+                            for (let i=resultObject.length; i--;) {
+
+                                let eventBlock = document.createElement("div");
+                                eventBlock.className = "event-block";
+                                eventBlock.id = resultObject[i].id;
+                                $eventsContainer.appendChild(eventBlock);
+
+                                let eventDesc = document.createElement("h3");
+                                eventDesc.innerHTML = resultObject[i].desc;
+                                eventBlock.appendChild(eventDesc);
+
+                                let registrationForm = document.createElement("form");
+                                registrationForm.className = "registerMemberOnEvent";
+                                registrationForm.id = resultObject[i].id;
+                                let registerPersonHeading = document.createElement('p');
+                                registerPersonHeading.innerHTML = "Register person on event";
+                                registrationForm.appendChild(registerPersonHeading);
+
+                                let registrationFormLabel = document.createElement('label');
+                                registrationFormLabel.for = "phoneNumberForReg"+resultObject[i].id;
+                                registrationFormLabel.innerHTML = "phone number:";
+                                registrationForm.appendChild(registrationFormLabel);
+
+                                let registrationFormInput = document.createElement('input');
+                                registrationFormInput.id = resultObject[i].id;
+                                registrationFormInput.className = "phoneNumberForReg";
+                                registrationFormInput.type = "text";
+                                registrationFormInput.name = "Phone number";
+                                registrationFormInput.placeholder = '+260000000000';
+                                registrationForm.appendChild(registrationFormInput);
+
+                                let registrationFormSubmit = document.createElement('input');
+                                registrationFormSubmit.type = "submit";
+                                registrationFormSubmit.value = "Register";
+                                registrationForm.appendChild(registrationFormSubmit);
+
+                                let registrationFormInputMessage = document.createElement('span');
+                                registrationFormInputMessage.className = "registerMemberOnEventMessage";
+                                registrationFormInputMessage.id = resultObject[i].id;
+                                registrationForm.appendChild(registrationFormInputMessage);
+
+                                eventBlock.appendChild(registrationForm);
+
+                                let checkPersonsRegistrationForm = document.createElement("form");
+                                checkPersonsRegistrationForm.className = "checkMembersRegistration";
+                                checkPersonsRegistrationForm.id = resultObject[i].id;
+                                let checkPersonsRegistrationHeading = document.createElement('p');
+                                checkPersonsRegistrationHeading.innerHTML = "Check person's registration on event";
+                                checkPersonsRegistrationForm.appendChild(checkPersonsRegistrationHeading);
+
+                                let checkPersonsRegistrationFormLabel = document.createElement('label');
+                                checkPersonsRegistrationFormLabel.for = "phoneNumberForCheck"+resultObject[i].id;
+                                checkPersonsRegistrationFormLabel.innerHTML = "Phone number:";
+                                checkPersonsRegistrationForm.appendChild(checkPersonsRegistrationFormLabel);
+
+                                let checkPersonsRegistrationFormInput = document.createElement('input');
+                                checkPersonsRegistrationFormInput.className = "phoneNumberForCheck";
+                                checkPersonsRegistrationFormInput.id = resultObject[i].id;
+                                checkPersonsRegistrationFormInput.type = "text";
+                                checkPersonsRegistrationFormInput.name = "Phone number";
+                                checkPersonsRegistrationFormInput.placeholder = '+260000000000';
+                                checkPersonsRegistrationForm.appendChild(checkPersonsRegistrationFormInput);
+
+                                let checkPersonsRegistrationFormSubmit = document.createElement('input');
+                                checkPersonsRegistrationFormSubmit.type = "submit";
+                                checkPersonsRegistrationFormSubmit.value = "Check";
+                                checkPersonsRegistrationForm.appendChild(checkPersonsRegistrationFormSubmit);
+
+                                let checkPersonsRegistrationFormInputMessage = document.createElement('span');
+                                checkPersonsRegistrationFormInputMessage.className = "checkMembersRegistrationMessage";
+                                checkPersonsRegistrationFormInputMessage.id = resultObject[i].id;
+                                checkPersonsRegistrationForm.appendChild(checkPersonsRegistrationFormInputMessage);
+
+                                eventBlock.appendChild(checkPersonsRegistrationForm);
+                            }
+
+                            let checkMembersRegistrationForms = document.getElementsByClassName('checkMembersRegistration');
+                            for (let form of checkMembersRegistrationForms) {
+                                form.addEventListener("submit", e => {
+                                    e.preventDefault();
+                                    let message = '';
+                                    const phoneNumber = e.target.elements[0].value;
+                                    e.target.elements[0].value = '';
+                                    document.getElementsByClassName('checkMembersRegistrationMessage')
+                                        .namedItem(form.id.toString()).innerHTML = 'Connecting to smart contract. Please wait';
+                                    eventReg.methods
+                                        .checkMember(form.id, phoneNumber)
+                                        .send({from: accounts[0]})
+                                        .then(result => {
+                                            if (result.events.IsRegistered.returnValues['0']===true) {
+                                                message = `Member with phone ${phoneNumber} is registered on this event`;
+                                            } else
+                                                message = `Member with phone ${phoneNumber} hasn't registered yet`;
+                                            document.getElementsByClassName('checkMembersRegistrationMessage')
+                                                .namedItem(form.id.toString()).innerHTML = message;
+                                            console.log(result.events.IsRegistered.returnValues['0']);
+                                        }, error => {
+                                            document.getElementsByClassName('checkMembersRegistrationMessage')
+                                                .namedItem(form.id.toString()).innerHTML = `Some error happened`;
+                                        });
+                                });
+                            }
+
+                            let membersRegistrationForms = document.getElementsByClassName('registerMemberOnEvent');
+                            for (let form of membersRegistrationForms) {
+                                form.addEventListener('submit', e => {
+                                    e.preventDefault();
+                                    const phoneNumber = e.target.elements[0].value;
+                                    e.target.elements[0].value = '';
+                                    document.getElementsByClassName('registerMemberOnEventMessage')
+                                        .namedItem(form.id.toString()).innerHTML = 'Connecting to smart contract. Please wait';
+                                    eventReg.methods
+                                        .eventRegistration(form.id, phoneNumber)
+                                        .send({from: accounts[0]})
+                                        .then(result => {
+                                            document.getElementsByClassName('registerMemberOnEventMessage')
+                                                .namedItem(form.id.toString()).innerHTML =
+                                                result.events.registrationStatus.returnValues['0'];
+                                            console.log(result.events.registrationStatus);
+                                        }, error => {
+                                            document.getElementsByClassName('registerMemberOnEventMessage')
+                                                .namedItem(form.id.toString()).innerHTML =
+                                                `Member with phone number ${phoneNumber} has got a registration error`;
+                                        });
+
+                                })
+                            }
+                        });
+                };
+                getInfoAboutEvents();
+
+
+                $setEventData.addEventListener('submit', e => {
+                    e.preventDefault();
+                    const eventDescription = e.target.elements[0].value;
+                    eventReg.methods
+                        .setEvent(eventDescription)
+                        .send({from: accounts[0]})
+                        .then(() => {
+                            $eventsContainer.innerHTML = "";
+                            getInfoAboutEvents();
+                        });
+                });
+            } catch (error) {
+            }
+        }
+        else if (window.web3) {
+            window.web3 = new Web3(web3.currentProvider);
+            web3.eth.sendTransaction({/* ... */});
+        }
+        else {
+            document.getElementById("heading").innerHTML = "Non-Ethereum browser detected. You should install MetaMask first!";
+        }
+    });
+</script>
+</body>
+</html>
